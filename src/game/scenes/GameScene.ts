@@ -137,7 +137,7 @@ export class GameScene extends Phaser.Scene {
     icon?.setVisible(false);
     state.addLoot(spot.value, spot.item);
     this.beep(520, 0.08, "square");
-    this.openFloatingText(spot.x, spot.y - 25, \`+1 \${spot.item.name}\`, "#ffe58a");
+    this.openFloatingText(spot.x, spot.y - 25, `+1 ${spot.item.name}`, "#ffe58a");
   }
 
   private startRaid() {
@@ -183,7 +183,7 @@ export class GameScene extends Phaser.Scene {
         state.completeQuest();
         state.finishReturn();
         this.phaseText.setText("🏠 ရွာပြန်ရောက်ပြီ");
-        this.openFloatingText(HOME.x, HOME.y - 70, \`Loot: \${state.loot}\`, "#9ef5c8");
+        this.openFloatingText(HOME.x, HOME.y - 70, `Loot: ${state.loot}`, "#9ef5c8");
         this.openDialogue("ရွာသူကြီး", "ဒီညရတဲ့ပစ္စည်းတွေနဲ့ ရွာကို ပိုကောင်းအောင် တည်ဆောက်နိုင်ပြီ။ Inventory နဲ့ Quest panel ကိုကြည့်ပါ။");
       }
     });
@@ -266,7 +266,7 @@ export class GameScene extends Phaser.Scene {
 
   private updateHud() {
     const state = useGameStore.getState();
-    this.timerText.setText(state.phase === "raid" ? \`\${state.raidTimeLeft}s\` : state.phase === "returning" ? "🐎" : "");
+    this.timerText.setText(state.phase === "raid" ? `${state.raidTimeLeft}s` : state.phase === "returning" ? "🐎" : "");
     this.timerText.setVisible(state.phase === "raid" || state.phase === "returning");
   }
 

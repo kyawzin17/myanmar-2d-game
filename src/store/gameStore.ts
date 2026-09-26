@@ -66,6 +66,7 @@ export const useGameStore = create<GameState>((set) => ({
   inventory: initialInventory,
   addCoin: () => set((state) => ({ coins: state.coins + 1, loot: state.loot + 1 })),
   addLoot: (amount, item) => set((state) => ({
+    coins: state.coins + item.value,
     loot: state.loot + amount,
     inventory: state.inventory.map((entry) => entry.id === item.id ? { ...entry, amount: entry.amount + 1 } : entry),
   })),

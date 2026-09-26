@@ -145,6 +145,11 @@ export class GameScene extends Phaser.Scene {
     if (state.phase === "raid") return;
     state.startRaid();
     state.startQuest();
+    for (const spot of this.lootSpots) {
+      spot.sprite.setVisible(true);
+      spot.prompt.setVisible(false);
+      (spot.sprite.getData("icon") as Phaser.GameObjects.Text | undefined)?.setVisible(true);
+    }
     this.raidEndsAt = this.time.now + RAID_DURATION * 1000;
     this.lastTimerSecond = -1;
     this.nightOverlay.setVisible(true);
@@ -161,6 +166,7 @@ export class GameScene extends Phaser.Scene {
     this.phaseText.setText("🐎 မြင်းနဲ့ ရွာပြန်နေပြီ");
     this.beep(180, 0.25, "sine");
 
+    this.player.anims.stop();
     this.horse = this.physics.add.sprite(this.player.x, this.player.y + 18, "horse-sheet", 0).setDepth(25);
     this.horse.anims.play("horse-run", true);
     this.tweens.add({

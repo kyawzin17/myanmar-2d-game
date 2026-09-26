@@ -31,7 +31,6 @@ export class GameScene extends Phaser.Scene {
     this.load.image("tiles", "/assets/tileset.svg");
     this.load.spritesheet("thief-sheet", "/assets/thief-sheet.svg", { frameWidth: 48, frameHeight: 64 });
     this.load.spritesheet("horse-sheet", "/assets/horse-sheet.svg", { frameWidth: 64, frameHeight: 64 });
-    this.load.image("pixel", "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAIAAAACCAQAAAD0In+KAAAAFElEQVR42mNkYGD4z8DAwMDAAAANAAE5f8kPAAAAAElFTkSuQmCC");
   }
 
   create() {
@@ -43,6 +42,7 @@ export class GameScene extends Phaser.Scene {
     if (!this.mapLayer) throw new Error("Ground tilemap layer failed to load.");
     this.mapLayer.setCollision(3);
 
+    this.makePixelTexture();
     this.makeAnimations();
     this.drawVillage();
     this.createStaticObstacles();
@@ -266,6 +266,13 @@ export class GameScene extends Phaser.Scene {
   private createInput() {
     this.cursors = this.input.keyboard!.createCursorKeys();
     this.keys = this.input.keyboard!.addKeys("W,A,S,D,E,ESC") as Record<string, Phaser.Input.Keyboard.Key>;
+  }
+
+  private makePixelTexture() {
+    const g = this.make.graphics({ x: 0, y: 0, add: false });
+    g.fillStyle(0xffffff).fillRect(0, 0, 2, 2);
+    g.generateTexture("pixel", 2, 2);
+    g.destroy();
   }
 
   private makeAnimations() {

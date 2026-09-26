@@ -251,9 +251,6 @@ export class GameScene extends Phaser.Scene {
     const g = this.add.graphics().setDepth(2);
 
     // Richer ground layers and landscape details.
-    g.fillStyle(0x6f9f55, 1).fillRect(0, 0, WORLD_WIDTH, WORLD_HEIGHT);
-    g.fillStyle(0x7fb15f, 0.32).fillRect(0, 0, WORLD_WIDTH, WORLD_HEIGHT);
-
     // River and small bridges.
     g.fillStyle(0x3d89b6, 0.92).fillRoundedRect(2140, 0, 180, WORLD_HEIGHT, 34);
     g.fillStyle(0x74b9d4, 0.35).fillRoundedRect(2160, 0, 55, WORLD_HEIGHT, 24);

@@ -4,6 +4,7 @@ import { useGameStore, type InventoryItem } from "../../store/gameStore";
 const WORLD_WIDTH = 2400;
 const WORLD_HEIGHT = 1504;
 const HOME = { x: 430, y: 650 };
+const DAY_DURATION = 120;
 const RAID_DURATION = 60;
 
 type LootSpot = { id: string; name: string; x: number; y: number; item: InventoryItem; value: number };
@@ -19,6 +20,10 @@ export class GameScene extends Phaser.Scene {
   private nearestLoot: string | null = null;
   private raidEndsAt = 0;
   private lastTimerSecond = -1;
+  private dayEndsAt = 0;
+  private lastDaySecond = -1;
+  private dayTimeText!: Phaser.GameObjects.Text;
+  private sunGlow!: Phaser.GameObjects.Arc;
   private nightOverlay!: Phaser.GameObjects.Rectangle;
   private timerText!: Phaser.GameObjects.Text;
   private phaseText!: Phaser.GameObjects.Text;
@@ -42,6 +47,7 @@ export class GameScene extends Phaser.Scene {
     if (!this.mapLayer) throw new Error("Ground tilemap layer failed to load.");
     this.mapLayer.setCollisionByProperty({ collides: true });
 
+    this.dayEndsAt = this.time.now + DAY_DURATION * 1000;
     this.makePixelTexture();
     this.makeAnimations();
     this.drawVillage();
@@ -69,11 +75,24 @@ export class GameScene extends Phaser.Scene {
       return;
     }
     if (state.phase === "returning") { this.player.setVelocity(0, 0); this.updateHud(); return; }
+    if (state.phase === "day") this.updateDayTimer();
     if (state.phase === "raid") this.updateRaidTimer();
     this.updatePlayer();
     this.updateInteraction();
     this.updateHud();
     if (Phaser.Input.Keyboard.JustDown(this.keys.ESC)) state.closeDialogue();
+  }
+
+  private updateDayTimer() {
+    const state = useGameStore.getState();
+    const seconds = Math.max(0, Math.ceil((this.dayEndsAt - this.time.now) / 1000));
+    if (seconds !== this.lastDaySecond) {
+      this.lastDaySecond = seconds;
+      state.setDayTimeLeft(seconds);
+    }
+    if (seconds <= 0) {
+      this.startRaid();
+    }
   }
 
   private updateRaidTimer() {
@@ -142,7 +161,7 @@ export class GameScene extends Phaser.Scene {
 
   private startRaid() {
     const state = useGameStore.getState();
-    if (state.phase === "raid") return;
+    if (state.phase === "raid" || state.phase === "returning") return;
     state.startRaid();
     state.startQuest();
     for (const spot of this.lootSpots) {
@@ -153,6 +172,8 @@ export class GameScene extends Phaser.Scene {
     this.raidEndsAt = this.time.now + RAID_DURATION * 1000;
     this.lastTimerSecond = -1;
     this.nightOverlay.setVisible(true);
+    this.dayTimeText.setVisible(false);
+    this.sunGlow.setVisible(false);
     this.phaseText.setText("🌙 ညဘက် — ခိုးထွက်နေပြီ");
     this.beep(260, 0.18, "sine");
     this.openFloatingText(this.player.x, this.player.y - 70, "60 seconds!", "#ffe58a");
@@ -182,7 +203,11 @@ export class GameScene extends Phaser.Scene {
         this.horse = undefined;
         state.completeQuest();
         state.finishReturn();
-        this.phaseText.setText("🏠 ရွာပြန်ရောက်ပြီ");
+        this.dayEndsAt = this.time.now + DAY_DURATION * 1000;
+        this.lastDaySecond = -1;
+        this.dayTimeText.setVisible(true);
+        this.sunGlow.setVisible(true);
+        this.phaseText.setText("☀️ နေ့ဘက် — ရွာတည်ဆောက် / ပြင်ဆင်ချိန်");
         this.openFloatingText(HOME.x, HOME.y - 70, `Loot: ${state.loot}`, "#9ef5c8");
         this.openDialogue("ရွာသူကြီး", "ဒီညရတဲ့ပစ္စည်းတွေနဲ့ ရွာကို ပိုကောင်းအောင် တည်ဆောက်နိုင်ပြီ။ Inventory နဲ့ Quest panel ကိုကြည့်ပါ။");
       }
@@ -223,7 +248,38 @@ export class GameScene extends Phaser.Scene {
   }
 
   private drawVillage() {
-    const g = this.add.graphics().setDepth(3);
+    const g = this.add.graphics().setDepth(2);
+
+    // Richer ground layers and landscape details.
+    g.fillStyle(0x6f9f55, 1).fillRect(0, 0, WORLD_WIDTH, WORLD_HEIGHT);
+    g.fillStyle(0x7fb15f, 0.32).fillRect(0, 0, WORLD_WIDTH, WORLD_HEIGHT);
+
+    // River and small bridges.
+    g.fillStyle(0x3d89b6, 0.92).fillRoundedRect(2140, 0, 180, WORLD_HEIGHT, 34);
+    g.fillStyle(0x74b9d4, 0.35).fillRoundedRect(2160, 0, 55, WORLD_HEIGHT, 24);
+    for (let y = 90; y < WORLD_HEIGHT; y += 120) {
+      g.lineStyle(2, 0xb9e9ef, 0.35);
+      g.lineBetween(2170, y, 2280, y + 16);
+    }
+    g.fillStyle(0x8a603c).fillRect(2080, 700, 170, 36);
+    g.fillStyle(0xc49a65).fillRect(2080, 694, 170, 8);
+    for (let x = 2090; x < 2240; x += 22) g.fillRect(x, 700, 8, 36);
+
+    // Main dirt roads.
+    g.lineStyle(82, 0x9c774d, 0.95);
+    g.lineBetween(40, 760, 2080, 760);
+    g.lineBetween(690, 80, 690, 1280);
+    g.lineStyle(62, 0xb28a59, 0.55);
+    g.lineBetween(40, 760, 2080, 760);
+    g.lineBetween(690, 80, 690, 1280);
+
+    // Rice fields.
+    for (const [x,y,w,h] of [[90,80,360,150],[1120,1080,480,190],[1580,1040,390,180]]) {
+      g.fillStyle(0x88a94c, 1).fillRoundedRect(x,y,w,h,18);
+      g.lineStyle(3, 0xb9c96b, 0.65);
+      for (let yy = y + 22; yy < y + h; yy += 28) g.lineBetween(x + 12, yy, x + w - 12, yy);
+    }
+
     this.drawHouse(g,360,260,260,170,"ကိုယ့်ရွာ");
     this.drawHouse(g,760,300,250,180,"အိမ်");
     this.drawHouse(g,1050,380,220,160,"ဆန်အိမ်");
@@ -231,22 +287,56 @@ export class GameScene extends Phaser.Scene {
     this.drawHouse(g,1780,500,260,180,"မြို့ဆိုင်");
     this.drawHouse(g,1940,860,250,180,"ကုန်သည်");
     this.drawHouse(g,250,920,240,170,"ဂိုဒေါင်");
-    g.fillStyle(0x2c5b35).fillRect(520,600,90,55);
-    g.fillStyle(0x8b5a32).fillRect(540,575,50,45);
-    g.fillStyle(0xd2a24c).fillRect(560,580,10,30);
-    for (const [x,y] of [[150,180],[640,180],[1330,220],[2220,240],[2250,720],[120,800],[1200,1080],[2240,1120]]) this.drawTree(g,x,y);
-    this.add.text(390,600,"ကိုယ့်ရွာ",{fontFamily:"Arial",fontSize:"24px",fontStyle:"bold",color:"#fff3c4"}).setDepth(10);
-    this.add.text(1520,340,"အိမ်နီးချင်းရွာ",{fontFamily:"Arial",fontSize:"18px",fontStyle:"bold",color:"#ffe9b0"}).setDepth(10);
-    this.add.text(1890,450,"မြို့",{fontFamily:"Arial",fontSize:"22px",fontStyle:"bold",color:"#ffe9b0"}).setDepth(10);
+
+    // Horse stable.
+    g.fillStyle(0x315c38).fillRoundedRect(505,590,120,72,10);
+    g.fillStyle(0x8b5a32).fillRect(525,568,80,58);
+    g.fillStyle(0xd2a24c).fillRect(558,575,14,35);
+    g.fillStyle(0xe9c46a).fillCircle(545,640,8);
+    g.fillStyle(0xe9c46a).fillCircle(585,640,8);
+
+    for (const [x,y] of [[150,180],[640,180],[1330,220],[2220,240],[2250,720],[120,800],[1200,1080],[2240,1120],[520,1180],[1740,180]]) {
+      this.drawTree(g,x,y);
+    }
+
+    // Lanterns for the night atmosphere.
+    for (const [x,y] of [[720,245],[1020,350],[1410,350],[1750,450],[1900,820]]) {
+      g.fillStyle(0x4d3425).fillRect(x, y, 5, 35);
+      g.fillStyle(0xffd66b, 0.85).fillCircle(x + 2, y - 2, 9);
+    }
+
+    this.add.text(390,600,"ကိုယ့်ရွာ",{fontFamily:"Arial",fontSize:"24px",fontStyle:"bold",color:"#fff3c4",stroke:"#3b281c",strokeThickness:4}).setDepth(10);
+    this.add.text(1520,340,"အိမ်နီးချင်းရွာ",{fontFamily:"Arial",fontSize:"18px",fontStyle:"bold",color:"#ffe9b0",stroke:"#3b281c",strokeThickness:3}).setDepth(10);
+    this.add.text(1890,450,"မြို့",{fontFamily:"Arial",fontSize:"22px",fontStyle:"bold",color:"#ffe9b0",stroke:"#3b281c",strokeThickness:3}).setDepth(10);
+    this.add.text(80,735,"မြို့သွားလမ်း",{fontFamily:"Arial",fontSize:"12px",color:"#f4dfb4",backgroundColor:"#684b35aa",padding:{x:7,y:4}}).setDepth(10);
   }
 
   private drawHouse(g: Phaser.GameObjects.Graphics, x:number, y:number, w:number, h:number, label:string) {
-    g.fillStyle(0x743c2e).fillTriangle(x-24,y,x+w/2,y-85,x+w+24,y);
-    g.fillStyle(0xb97950).fillRect(x,y,w,h);
-    g.fillStyle(0x61362b).fillRect(x+w*.44,y+h*.48,42,h*.52);
-    g.fillStyle(0x9bd9e6).fillRect(x+28,y+42,52,42);
-    g.fillStyle(0x9bd9e6).fillRect(x+w-80,y+42,52,42);
-    this.add.text(x+w/2,y+h+8,label,{fontSize:"11px",color:"#f9edc8"}).setOrigin(.5).setDepth(8);
+    // Soft ground shadow.
+    g.fillStyle(0x273a24, 0.22).fillEllipse(x + w / 2, y + h + 12, w + 35, 28);
+    // Wooden body.
+    g.fillStyle(0x9a6245).fillRoundedRect(x, y, w, h, 10);
+    g.fillStyle(0xc98658).fillRoundedRect(x + 8, y + 8, w - 16, h - 16, 8);
+    // Roof with layered tiles.
+    g.fillStyle(0x5a3028).fillTriangle(x - 28,y + 6,x+w/2,y-92,x+w+28,y + 6);
+    g.fillStyle(0x873f32).fillTriangle(x - 18,y + 3,x+w/2,y-78,x+w+18,y + 3);
+    g.lineStyle(3, 0xc36a4c, 0.7);
+    for (let i = 0; i < 6; i++) {
+      const t = (i + 1) / 7;
+      g.lineBetween(x + w * t, y - 10, x + w * t, y + 18);
+    }
+    // Door and windows.
+    g.fillStyle(0x573126).fillRoundedRect(x + w * .43, y + h * .48, 48, h * .52, 6);
+    g.fillStyle(0x8fd2df).fillRoundedRect(x + 28, y + 42, 54, 44, 5);
+    g.fillStyle(0x8fd2df).fillRoundedRect(x + w - 82, y + 42, 54, 44, 5);
+    g.lineStyle(3, 0xf1e0b2, 0.55);
+    g.lineBetween(x + 55, y + 42, x + 55, y + 86);
+    g.lineBetween(x + 28, y + 64, x + 82, y + 64);
+    g.lineBetween(x + w - 55, y + 42, x + w - 55, y + 86);
+    g.lineBetween(x + w - 82, y + 64, x + w - 28, y + 64);
+    // Small porch.
+    g.fillStyle(0x6f4933).fillRect(x + w * .32, y + h - 7, w * .36, 12);
+    this.add.text(x+w/2,y+h+10,label,{fontSize:"11px",fontStyle:"bold",color:"#fff1c9",stroke:"#38251b",strokeThickness:3}).setOrigin(.5).setDepth(8);
   }
 
   private drawTree(g: Phaser.GameObjects.Graphics, x:number, y:number) {
@@ -257,17 +347,52 @@ export class GameScene extends Phaser.Scene {
   }
 
   private createUI() {
-    this.nightOverlay = this.add.rectangle(480,270,960,540,0x08102b,.64).setScrollFactor(0).setDepth(80).setVisible(false);
-    this.timerText = this.add.text(480,24,"",{fontFamily:"Arial",fontSize:"28px",fontStyle:"bold",color:"#ffe38b",backgroundColor:"#0b1220e8",padding:{x:14,y:7}}).setOrigin(.5,0).setScrollFactor(0).setDepth(90);
-    this.phaseText = this.add.text(20,20,"🏠 ကိုယ့်ရွာ — ညမထွက်သေး",{fontFamily:"Arial",fontSize:"14px",fontStyle:"bold",color:"#eaf6ff",backgroundColor:"#07141ee8",padding:{x:10,y:7}}).setScrollFactor(0).setDepth(90);
-    this.sceneHomeHint = this.add.text(560,585,"E  ညဘက်ခိုးထွက်မယ်",{fontFamily:"Arial",fontSize:"12px",fontStyle:"bold",color:"#ffe58a",backgroundColor:"#111a15ee",padding:{x:8,y:5}}).setOrigin(.5).setDepth(50);
-    this.add.text(760,495,"🌙 အိမ်နီးချင်းရွာ → မြို့",{fontFamily:"Arial",fontSize:"13px",color:"#d9e7ff",backgroundColor:"#07141ebd",padding:{x:9,y:6}}).setDepth(12);
+    this.nightOverlay = this.add.rectangle(480,270,960,540,0x08102b,.68)
+      .setScrollFactor(0).setDepth(80).setVisible(false);
+
+    this.timerText = this.add.text(480,24,"",{
+      fontFamily:"Arial",fontSize:"28px",fontStyle:"bold",color:"#ffe38b",
+      backgroundColor:"#0b1220e8",padding:{x:14,y:7}
+    }).setOrigin(.5,0).setScrollFactor(0).setDepth(90);
+
+    this.dayTimeText = this.add.text(480,24,"☀️ 02:00",{
+      fontFamily:"Arial",fontSize:"22px",fontStyle:"bold",color:"#fff4b0",
+      backgroundColor:"#203b24dd",padding:{x:12,y:6}
+    }).setOrigin(.5,0).setScrollFactor(0).setDepth(90);
+
+    this.sunGlow = this.add.circle(870,70,30,0xffd35a,.22)
+      .setScrollFactor(0).setDepth(89);
+
+    this.phaseText = this.add.text(20,20,"☀️ ကိုယ့်ရွာ — နေ့ဘက်",{
+      fontFamily:"Arial",fontSize:"14px",fontStyle:"bold",color:"#fff8df",
+      backgroundColor:"#17351fd9",padding:{x:10,y:7}
+    }).setScrollFactor(0).setDepth(90);
+
+    this.sceneHomeHint = this.add.text(560,585,"E  ညဘက်ခိုးထွက်မယ်",{
+      fontFamily:"Arial",fontSize:"12px",fontStyle:"bold",color:"#ffe58a",
+      backgroundColor:"#111a15ee",padding:{x:8,y:5}
+    }).setOrigin(.5).setDepth(50);
+
+    this.add.text(760,495,"🌙 အိမ်နီးချင်းရွာ → မြို့",{
+      fontFamily:"Arial",fontSize:"13px",color:"#d9e7ff",
+      backgroundColor:"#07141ebd",padding:{x:9,y:6}
+    }).setDepth(12);
   }
 
   private updateHud() {
     const state = useGameStore.getState();
-    this.timerText.setText(state.phase === "raid" ? `${state.raidTimeLeft}s` : state.phase === "returning" ? "🐎" : "");
+    const dayMinutes = Math.floor(state.dayTimeLeft / 60);
+    const daySeconds = String(state.dayTimeLeft % 60).padStart(2, "0");
+    this.dayTimeText.setText(`☀️ ${String(dayMinutes).padStart(2, "0")}:${daySeconds}`);
+    this.dayTimeText.setVisible(state.phase === "day");
+
+    this.timerText.setText(
+      state.phase === "raid" ? `🌙 ${state.raidTimeLeft}s` :
+      state.phase === "returning" ? "🐎" : ""
+    );
     this.timerText.setVisible(state.phase === "raid" || state.phase === "returning");
+    this.sceneHomeHint.setVisible(state.phase === "day");
+    this.sunGlow.setVisible(state.phase === "day");
   }
 
   private createInput() {

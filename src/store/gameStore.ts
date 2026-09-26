@@ -1,12 +1,13 @@
 import { create } from "zustand";
 
-export type GamePhase = "home" | "raid" | "returning" | "village";
+export type GamePhase = "day" | "raid" | "returning";
 export type InventoryItem = { id: string; name: string; icon: string; amount: number; value: number };
 
 type GameState = {
   coins: number;
   items: number;
   loot: number;
+  dayTimeLeft: number;
   raidTimeLeft: number;
   phase: GamePhase;
   questStarted: boolean;
@@ -24,6 +25,7 @@ type GameState = {
   addLoot: (amount: number, item: InventoryItem) => void;
   addItem: () => void;
   startRaid: () => void;
+  setDayTimeLeft: (seconds: number) => void;
   setRaidTimeLeft: (seconds: number) => void;
   finishRaid: () => void;
   finishReturn: () => void;
@@ -39,6 +41,8 @@ type GameState = {
   toggleSound: () => void;
 };
 
+const DAY_DURATION = 120;
+
 const initialInventory: InventoryItem[] = [
   { id: "coin", name: "ရွှေဒင်္ဂါး", icon: "🪙", amount: 0, value: 1 },
   { id: "rice", name: "ဆန်အိတ်", icon: "🌾", amount: 0, value: 12 },
@@ -51,8 +55,9 @@ export const useGameStore = create<GameState>((set) => ({
   coins: 0,
   items: 0,
   loot: 0,
+  dayTimeLeft: DAY_DURATION,
   raidTimeLeft: 60,
-  phase: "home",
+  phase: "day",
   questStarted: false,
   questComplete: false,
   inventoryOpen: false,
@@ -71,10 +76,11 @@ export const useGameStore = create<GameState>((set) => ({
     inventory: state.inventory.map((entry) => entry.id === item.id ? { ...entry, amount: entry.amount + 1 } : entry),
   })),
   addItem: () => set((state) => ({ items: state.items + 1 })),
-  startRaid: () => set({ phase: "raid", raidTimeLeft: 60 }),
+  startRaid: () => set({ phase: "raid", raidTimeLeft: 60, dayTimeLeft: 0 }),
+  setDayTimeLeft: (seconds) => set({ dayTimeLeft: seconds }),
   setRaidTimeLeft: (seconds) => set({ raidTimeLeft: seconds }),
   finishRaid: () => set({ phase: "returning", raidTimeLeft: 0 }),
-  finishReturn: () => set({ phase: "home" }),
+  finishReturn: () => set({ phase: "day", dayTimeLeft: DAY_DURATION, questStarted: false }),
   buildVillage: () => set((state) => {
     const nextLevel = Math.min(5, state.villageLevel + 1);
     return state.coins >= nextLevel * 5 ? { coins: state.coins - nextLevel * 5, villageLevel: nextLevel } : state;

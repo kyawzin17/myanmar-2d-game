@@ -74,7 +74,7 @@ export const useGameStore = create<GameState>((set) => ({
   startRaid: () => set({ phase: "raid", raidTimeLeft: 60 }),
   setRaidTimeLeft: (seconds) => set({ raidTimeLeft: seconds }),
   finishRaid: () => set({ phase: "returning", raidTimeLeft: 0 }),
-  finishReturn: () => set({ phase: "village" }),
+  finishReturn: () => set({ phase: "home" }),
   buildVillage: () => set((state) => {
     const nextLevel = Math.min(5, state.villageLevel + 1);
     return state.coins >= nextLevel * 5 ? { coins: state.coins - nextLevel * 5, villageLevel: nextLevel } : state;

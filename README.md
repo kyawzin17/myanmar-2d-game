@@ -1,21 +1,30 @@
 # Myanmar 2D Game
 
-Simple playable v0.0.1 prototype built with React + TypeScript + Phaser.
+Playable **v0.0.2** prototype built with React + TypeScript + Phaser.
 
-## Features
-- WASD / Arrow-key movement
-- 4-direction movement
-- Camera follow
-- World boundaries
-- Simple Myanmar village scene
-- NPC interaction with E
-- Dialogue UI
-- Coin collection + React/Zustand HUD
-- No external image assets required
+## v0.0.2
+- Improved game HUD and responsive layout
+- Larger village world with house, fences, trees and water
+- Proper building collision
+- Smooth normalized 4-direction movement
+- Camera follow + deadzone
+- Animated coins with collection effects
+- NPC interaction prompt
+- Burmese dialogue overlay
+- React/Zustand game state
+- Generated placeholder characters and objects, so no external assets are required
 
 ## Run
+```bash
 npm install
 npm run dev
+```
 
-## Goal
-This version establishes the core game loop before adding sprites, tiled maps, quests, inventory, combat, save/load, and richer Myanmar village content.
+## Controls
+- WASD / Arrow Keys: move
+- E: talk to the NPC
+- ESC: close dialogue
+
+## Roadmap
+v0.0.3 → real pixel-art sprites, tile map, multiple NPCs, quests and inventory.
+v0.1.0 → save/load, combat or mini-games, sound, mobile controls and a larger Myanmar village.

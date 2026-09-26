@@ -174,6 +174,7 @@ export class GameScene extends Phaser.Scene {
         this.player.setPosition(HOME.x, HOME.y);
         this.horse?.destroy();
         this.horse = undefined;
+        state.completeQuest();
         state.finishReturn();
         this.phaseText.setText("🏠 ရွာပြန်ရောက်ပြီ");
         this.openFloatingText(HOME.x, HOME.y - 70, \`Loot: \${state.loot}\`, "#9ef5c8");

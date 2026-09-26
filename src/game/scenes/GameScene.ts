@@ -40,7 +40,7 @@ export class GameScene extends Phaser.Scene {
     if (!tileset) throw new Error("Tileset failed to load.");
     this.mapLayer = map.createLayer("Ground", tileset, 0, 0)!;
     if (!this.mapLayer) throw new Error("Ground tilemap layer failed to load.");
-    this.mapLayer.setCollision(3);
+    this.mapLayer.setCollisionByProperty({ collides: true });
 
     this.makePixelTexture();
     this.makeAnimations();
